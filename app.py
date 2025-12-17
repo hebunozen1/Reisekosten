@@ -13,7 +13,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 # Optional (kostenlos). Empfehlung: Python 3.11 verwenden.
-from googletrans import Translator  # googletrans==4.0.0-rc1
+import requests
+
 
 
 app = Flask(__name__)
@@ -106,10 +107,29 @@ def login_required(role: str | None = None):
 def translate_ar_to_de(text: str) -> str:
     if not text:
         return ""
+
     try:
-        return translator.translate(text, src="ar", dest="de").text
+        response = requests.post(
+            "https://libretranslate.de/translate",
+            timeout=5,
+            json={
+                "q": text,
+                "source": "ar",
+                "target": "de",
+                "format": "text"
+            }
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("translatedText", text)
+
+        return text
+
     except Exception:
-        return ""
+        # Fallback: Originaltext zurückgeben
+        return text
+
 
 
 @app.route("/")
