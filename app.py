@@ -26,7 +26,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
 
-translator = Translator()
 
 KATEGORIEN = {
     "TRANSPORT":   {"ar": "النقل",          "de": "Transport"},
