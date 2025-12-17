@@ -16,7 +16,6 @@ from werkzeug.utils import secure_filename
 import requests
 
 
-
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET_KEY", "change-me-in-production")
 app.permanent_session_lifetime = timedelta(days=14)  # "angemeldet bleiben"
