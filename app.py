@@ -129,4 +129,86 @@ def register():
         try:
             db.execute(
                 "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-                (username, email, pw_hash,_
+                (username, email, pw_hash, role)
+            )
+            db.commit()
+        except sqlite3.IntegrityError:
+            flash("Benutzername oder E-Mail existiert bereits.", "error")
+            return render_template("register.html")
+
+        flash("Registrierung erfolgreich. Bitte einloggen.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+# ================== PASSWORD RESET ==================
+@app.route("/forgot", methods=["GET", "POST"])
+def forgot():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        if not email:
+            flash("Bitte E-Mail eingeben.", "error")
+            return render_template("forgot.html")
+
+        token = secrets.token_urlsafe(32)
+        db = get_db()
+        db.execute(
+            "UPDATE users SET reset_token = ? WHERE email = ?",
+            (token, email)
+        )
+        db.commit()
+
+        reset_link = url_for("reset", token=token, _external=True)
+
+        try:
+            send_reset_email(email, reset_link)
+        except Exception as e:
+            print("MAIL ERROR:", e)
+            flash(
+                "E-Mail konnte aktuell nicht gesendet werden. "
+                "Bitte später erneut versuchen.",
+                "error"
+            )
+            return render_template("forgot.html")
+
+        flash("Wir haben dir eine E-Mail zum Zurücksetzen gesendet.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("forgot.html")
+
+
+@app.route("/reset/<token>", methods=["GET", "POST"])
+def reset(token):
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+
+        if not password or password != password2:
+            flash("Passwörter stimmen nicht.", "error")
+            return render_template("reset.html")
+
+        db = get_db()
+        db.execute(
+            "UPDATE users SET password = ?, reset_token = NULL WHERE reset_token = ?",
+            (generate_password_hash(password), token)
+        )
+        db.commit()
+
+        flash("Passwort erfolgreich geändert.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("reset.html")
+
+
+# ================== DASHBOARD ==================
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+
+# ================== RUN (RENDER READY) ==================
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
