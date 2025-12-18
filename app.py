@@ -85,7 +85,7 @@ def ensure_schema() -> None:
         return any(c["name"] == col for c in cols)
 
     if not _col_exists("users", "email"):
-        db.execute("ALTER TABLE users ADD COLUMN email TEXT UNIQUE")
+        db.execute("ALTER TABLE users ADD COLUMN email TEXT")
     if not _col_exists("users", "wechselkurs_beleg"):
         db.execute("ALTER TABLE users ADD COLUMN wechselkurs_beleg TEXT")
     if not _col_exists("users", "reset_token"):
