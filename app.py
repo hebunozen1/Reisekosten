@@ -90,11 +90,22 @@ def forgot():
         db.execute("UPDATE users SET reset_token=? WHERE email=?", (token,email))
         db.commit()
 
-        reset_link = url_for("reset", token=token, _external=True)
-        send_reset_email(email, reset_link)
+       reset_link = url_for("reset", token=token, _external=True)
 
-        flash("Wir haben dir eine E-Mail zum Zurücksetzen gesendet.")
-        return redirect(url_for("login"))
+try:
+    send_reset_email(email, reset_link)
+except Exception as e:
+    print("MAIL ERROR:", e)
+    flash(
+        "Die E-Mail konnte aktuell nicht gesendet werden. "
+        "Bitte versuche es später erneut.",
+        "error"
+    )
+    return render_template("forgot.html")
+
+flash("Wir haben dir eine E-Mail zum Zurücksetzen gesendet.", "success")
+return redirect(url_for("login"))
+
 
     return render_template("forgot.html")
 
