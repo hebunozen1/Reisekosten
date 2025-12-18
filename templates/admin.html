@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Buchhaltung</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;margin:0;padding:18px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-top:12px}
+    h2{margin:0}
+    a{text-decoration:none}
+    table{width:100%;border-collapse:collapse;min-width:1200px}
+    th,td{border-bottom:1px solid #eee;padding:10px;vertical-align:top}
+    th{background:#fafafa;text-align:left;position:sticky;top:0}
+    .wrap{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:auto}
+    input[type="number"]{width:120px;padding:8px;border:1px solid #ddd;border-radius:10px}
+    button{padding:8px 10px;border:1px solid #ddd;background:#fff;border-radius:10px;cursor:pointer}
+    .badge{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}
+    .ok{background:#e6ffed}
+    .no{background:#fff5f5}
+    .msg{padding:10px;border-radius:10px;margin:10px 0}
+    .msg.ok{background:#e6ffed}
+    .msg.err{background:#fff5f5}
+    .muted{color:#666;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:1000px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h2>Buchhaltung</h2>
+    <div class="muted">Eingeloggt als: <b>{{ alaa }}</b></div>
+  </div>
+  <div>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat,msg in messages %}
+      <div class="msg {{ 'ok' if cat=='ok' else 'err' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="grid">
+  <div class="card">
+    <h3 style="margin-top:0">Reiseführer – Übersicht (SAR)</h3>
+    <div class="muted" style="margin-bottom:10px">Startguthaben wird vom Reiseführer selbst gepflegt.</div>
+    <div style="overflow:auto">
+      <table style="min-width:650px">
+        <tr><th>Reiseführer</th><th>Startguthaben (SAR)</th><th>Summe Ausgaben (SAR)</th><th>Saldo (SAR)</th></tr>
+        {% for u in users_summary %}
+        <tr>
+          <td>{{ u["username"] }}</td>
+          <td>{{ "%.2f"|format(u["start"]) }}</td>
+          <td>{{ "%.2f"|format(u["total"]) }}</td>
+          <td>
+            {% if u["saldo"] >= 0 %}
+              <span class="badge ok">{{ "%.2f"|format(u["saldo"]) }}</span>
+            {% else %}
+              <span class="badge no">{{ "%.2f"|format(u["saldo"]) }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+<div class="card">
+    <h3 style="margin-top:0">Hinweis</h3>
+    <div class="muted">
+      Kategorien & Beschreibungen sind bereits auf Deutsch gespeichert (automatisch übersetzt).
+      Belege sind nur für eingeloggte Nutzer sichtbar.
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <h3 style="margin-top:0">Ausgaben (DE)</h3>
+  <div class="wrap">
+    <table>
+      <tr>
+        <th>ID</th><th>Reiseleiter</th><th>Datum</th><th>Kategorie</th><th>Beschreibung</th>
+        <th>SAR</th><th>Beleg</th><th>Status</th><th>Aktion</th>
+      </tr>
+      {% for k in kosten %}
+      <tr>
+        <td>{{ k["id"] }}</td>
+        <td>{{ k["username"] }}</td>
+        <td>{{ k["datum"] }}</td>
+        <td>{{ k["kategorie_de"] }}</td>
+        <td>{{ k["beschreibung_de"] }}</td>
+        <td>{{ "%.2f"|format(k["betrag_sar"]) }}</td>
+        <td>
+          {% if k["beleg"] %}
+            <a href="/uploads/{{ k['beleg'] }}" target="_blank">Beleg öffnen</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if k["genehmigt"] %}
+            <span class="badge ok">Genehmigt</span>
+          {% else %}
+            <span class="badge no">Offen</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not k["genehmigt"] %}
+            <a href="/genehmigen/{{ k['id'] }}">Genehmigen ({{ alaa }})</a>
+          {% else %}
+            ✔ {{ k["genehmigt_von"] or alaa }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

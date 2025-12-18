@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Login</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;margin:0;padding:0}
+    .box{max-width:460px;margin:60px auto;background:#fff;padding:22px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    h2{margin:0 0 12px 0}
+    .tabs{display:flex;gap:10px;margin-bottom:16px}
+    .tab{flex:1;text-align:center;padding:10px;border-radius:10px;border:1px solid #ddd;font-weight:800}
+    .tab.active{background:#2c7be5;color:#fff;border-color:#2c7be5}
+    label{display:block;font-weight:700;margin:10px 0 6px}
+    input{width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}
+    button{width:100%;padding:11px;border:0;border-radius:10px;background:#2c7be5;color:#fff;font-weight:800;margin-top:14px;cursor:pointer}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px}
+    a{text-decoration:none}
+    .msg{padding:10px;border-radius:10px;margin:10px 0}
+    .ok{background:#e6ffed}
+    .err{background:#ffecec}
+    .muted{color:#666;font-size:13px}
+    .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:#333}
+    .chk input{width:auto}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="tabs">
+      <a class="tab {{ 'active' if role=='reisefuehrer' else '' }}" href="{{ url_for('login', role='reisefuehrer') }}">Login Reiseführer</a>
+      <a class="tab {{ 'active' if role=='buchhaltung' else '' }}" href="{{ url_for('login', role='buchhaltung') }}">Login Buchhaltung</a>
+    </div>
+
+    <h2>{{ 'Login Reiseführer' if role=='reisefuehrer' else 'Login Buchhaltung' }}</h2>
+    <div class="muted">Bitte melde dich an.</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat,msg in messages %}
+          <div class="msg {{ 'ok' if cat=='ok' else 'err' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <input type="hidden" name="role" value="{{ role }}">
+
+      <label>Username</label>
+      <input name="username" autocomplete="username" required>
+
+      <label>Passwort</label>
+      <input type="password" name="password" autocomplete="current-password" required>
+
+      <div class="row">
+        <label class="chk">
+          <input type="checkbox" name="remember" value="1">
+          Angemeldet bleiben
+        </label>
+        <a href="{{ url_for('register') }}">Registrieren</a>
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="row" style="margin-top:16px">
+      <a href="{{ url_for('root') }}">Start</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </div>
+</body>
+</html>
