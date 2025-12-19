@@ -166,16 +166,25 @@ def register():
 
 @app.route("/forgot", methods=["GET", "POST"])
 def forgot():
+    print("FORGOT ROUTE AUFGERUFEN")
+
     if request.method == "POST":
         email = request.form.get("email")
+        print("E-MAIL AUS FORMULAR:", email)
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s" if DATABASE_URL else
-                    "SELECT * FROM users WHERE email = ?", (email,))
+        cur.execute(
+            "SELECT * FROM users WHERE email = %s" if DATABASE_URL else
+            "SELECT * FROM users WHERE email = ?", (email,)
+        )
         user = cur.fetchone()
 
+        print("USER AUS DB:", user)
+
         if user:
+            print("USER GEFUNDEN – TOKEN + MAIL")
+
             token = uuid.uuid4().hex
             expires = datetime.utcnow() + timedelta(minutes=30)
 
@@ -189,14 +198,20 @@ def forgot():
 
             base_url = os.environ.get("RESET_BASE_URL", "http://localhost:5000")
             reset_link = f"{base_url}/reset/{token}"
+            print("RESET LINK:", reset_link)
 
             send_reset_email(user["email"], reset_link)
+            print("SEND_RESET_EMAIL AUFGERUFEN")
+
+        else:
+            print("KEIN USER MIT DIESER E-MAIL")
 
         conn.close()
         flash("Wenn die E-Mail existiert, wurde eine Nachricht versendet.")
         return redirect(url_for("login"))
 
     return render_template("forgot.html")
+
 
 @app.route("/reset/<token>", methods=["GET", "POST"])
 def reset(token):
