@@ -139,7 +139,8 @@ def dashboard():
         total=0.0,
         approved=0.0,
         pending=0.0,
-        rejected=0.0
+        rejected=0.0,
+        saldo=0.0
     )
 
 # =====================
