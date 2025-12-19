@@ -43,11 +43,6 @@ def get_db():
         conn.execute("PRAGMA synchronous=NORMAL;")
         return conn
 
-    else:
-        conn = sqlite3.connect("reisekosten.db")
-        conn.row_factory = sqlite3.Row
-        return conn
-
 def ensure_schema():
     conn = get_db()
     cur = conn.cursor()
