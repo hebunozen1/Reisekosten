@@ -120,23 +120,41 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if not email or not password:
+            flash("Bitte E-Mail und Passwort eingeben")
+            return redirect(url_for("login"))
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s" if DATABASE_URL else
-                    "SELECT * FROM users WHERE email = ?", (email,))
+        cur.execute(
+            "SELECT * FROM users WHERE email = %s" if DATABASE_URL else
+            "SELECT * FROM users WHERE email = ?",
+            (email,)
+        )
         user = cur.fetchone()
         conn.close()
 
-        if user and check_password_hash(user["password_hash"], password):
-            session["user_id"] = user["id"]
-            session["role"] = user["role"]
-            return redirect(url_for("dashboard"))
+        if user:
+            # ✅ funktioniert bei Tuple UND Dict
+            password_hash = (
+                user["password_hash"]
+                if hasattr(user, "keys")
+                else user[3]   # password_hash
+            )
+
+            if check_password_hash(password_hash, password):
+                session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
+                session["role"] = user["role"] if hasattr(user, "keys") else user[4]
+                return redirect(url_for("dashboard"))
 
         flash("Login fehlgeschlagen")
+        return redirect(url_for("login"))
+
     return render_template("login.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
