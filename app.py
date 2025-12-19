@@ -130,20 +130,16 @@ def login():
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM users WHERE email = %s" if DATABASE_URL else
-            "SELECT * FROM users WHERE email = ?",
+            "SELECT id, username, email, password_hash, role FROM users WHERE email = %s"
+            if DATABASE_URL else
+            "SELECT id, username, email, password_hash, role FROM users WHERE email = ?",
             (email,)
         )
         user = cur.fetchone()
         conn.close()
 
         if user:
-            # ✅ funktioniert bei Tuple UND Dict
-            password_hash = (
-                user["password_hash"]
-                if hasattr(user, "keys")
-                else user[3]   # password_hash
-            )
+            password_hash = user["password_hash"] if hasattr(user, "keys") else user[3]
 
             if check_password_hash(password_hash, password):
                 session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
@@ -154,6 +150,7 @@ def login():
         return redirect(url_for("login"))
 
     return render_template("login.html")
+
 
 
 @app.route("/register", methods=["GET", "POST"])
