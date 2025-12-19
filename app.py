@@ -98,12 +98,16 @@ Falls du das nicht warst, ignoriere diese E-Mail.
 """
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
-    print("SMTP: connecting via SSL")
-    server = smtplib.SMTP_SSL(host, port, timeout=10)
+    print("SMTP: connecting")
+    server = smtplib.SMTP(host, port, timeout=10)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
     server.login(user, password)
     server.sendmail(from_email, [to_email], msg.as_string())
     server.quit()
     print("SMTP: mail sent")
+
 
 
 # =====================
