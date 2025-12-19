@@ -74,7 +74,7 @@
   </div>
   <div class="card">
     <div class="muted">(SAR) الرصيد الحالي</div>
-    <div class="big">{{ '%.2f'|format(saldo) }}</div>
+    <div class="big">{{ '%.2f'|format(saldo|default(0)) }}</div>
   </div>
 </div>
 
