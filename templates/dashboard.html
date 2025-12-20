@@ -25,6 +25,24 @@
     .b-ok{background:#e6ffed}
     .b-no{background:#fff5f5}
     .b-wait{background:#fffbe6}
+    /* FIX: Kategorie-Dropdown */
+    .card, .grid, table {
+      overflow: visible !important;
+    }
+
+    select[name="kategorie"] {
+      position: relative !important;
+      z-index: 9999 !important;
+      pointer-events: auto !important;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    select[name="kategorie"] option {
+      background: #ffffff;
+      color: #000000;
+    }
+
   </style>
 </head>
 <body>
