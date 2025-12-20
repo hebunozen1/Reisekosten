@@ -433,17 +433,20 @@ def dashboard():
                 flash("Status aktualisiert", "ok")
                 return redirect(url_for("dashboard"))
 
-        if action == "reset_start":
-            if DATABASE_URL:
-                cur.execute("DELETE FROM startguthaben WHERE user_id=%s", (uid,))
-            else:
+            if action == "reset_start":
+                conn = get_db()
+                cur = conn.cursor()
+                if DATABASE_URL:
+                    cur.execute("DELETE FROM startguthaben WHERE user_id=%s", (uid,))
+                else:
                 cur.execute("DELETE FROM startguthaben WHERE user_id=?", (uid,))
-            conn.commit()
-            conn.close()
-            flash("Startguthaben zurückgesetzt", "ok")
-            return redirect(url_for("dashboard"))
+                conn.commit()
+                conn.close()
+                flash("Startguthaben zurückgesetzt", "ok")
+                return redirect(url_for("dashboard"))
+            
 
-        if action == "add_kosten":
+            if action == "add_kosten":
             datum = request.form.get("datum")
             kategorie_ar = request.form.get("kategorie")
             kategorie_de = CATEGORIES.get(kategorie_ar, {}).get("de")
