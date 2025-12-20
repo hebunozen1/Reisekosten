@@ -27,20 +27,37 @@
     .b-wait{background:#fffbe6}
   
 
-    /* --- Dropdown Fix (Kategorie) --- */
-    select[name="kategorie"]{
-      position:relative;
-      z-index:9999;
-      pointer-events:auto;
-      background:#fff;
-      color:#000;
-      -webkit-appearance: menulist;
+    /* === FIX Dropdown (Grid + RTL + Mobile) === */
+    select {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+
+      background-color: #ffffff;
+      color: #000000;
+
       appearance: auto;
+      -webkit-appearance: menulist;
+      -moz-appearance: menulist;
+
+      position: relative;
+      z-index: 1000;
     }
-    select[name="kategorie"] option{
-      background:#fff;
-      color:#000;
+
+    /* extrem wichtig bei Grid-Containern */
+    form {
+      overflow: visible !important;
     }
+
+    /* Mobile Safari / Chrome Fix */
+    @media (max-width: 900px) {
+      select {
+        font-size: 16px; /* verhindert iOS-Zoom & Bug */
+      }
+    }
+
 
 </style>
 </head>
