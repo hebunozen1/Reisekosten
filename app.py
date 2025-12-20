@@ -475,8 +475,7 @@ def dashboard():
                 "id": row[0], "user_id": row[1], "username": row[2], "datum": row[3], "kategorie_ar": row[4],
                 "beschreibung_ar": row[5], "betrag_sar": row[6], "beleg": row[7], "genehmigt": row[8], "genehmigt_von": row[9]
             }
-            cat = CATEGORIES.get(r.get("kategorie") or "", {})
-            r["kategorie_ar"] = cat.get("ar", r.get("kategorie") or "")
+
             kosten.append(r)
 
         conn.close()
@@ -537,7 +536,7 @@ def dashboard():
 
         if action == "add_kosten":
             datum = request.form.get("datum")
-            kategorie = request.form.get("kategorie")
+            kategorie_ar = request.form.get("kategorie")
             beschreibung_ar = request.form.get("beschreibung_ar")
             betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
             ohne_beleg = 1 if request.form.get("ohne_beleg") else 0
@@ -674,7 +673,7 @@ def export_excel():
     writer.writerow(["ID", "Reiseführer", "Datum", "Kategorie", "Beschreibung (AR)", "Betrag (SAR)", "Status"])
     for r in rows:
         if hasattr(r, "keys"):
-            writer.writerow([r.get("id"), r.get("username"), r.get("datum"), r.get("kategorie"),
+            writer.writerow([r.get("id"), r.get("username"), r.get("datum"), r.get("kategorie_ar"),
                              r.get("beschreibung_ar"), r.get("betrag_sar"), r.get("genehmigt")])
         else:
             writer.writerow([r[0], r[1], r[2], r[3], r[4], r[5], r[6]])
