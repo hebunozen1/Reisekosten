@@ -447,12 +447,12 @@ def dashboard():
             
 
             if action == "add_kosten":
-            datum = request.form.get("datum")
-            kategorie_ar = request.form.get("kategorie")
-            kategorie_de = CATEGORIES.get(kategorie_ar, {}).get("de")
-            beschreibung_ar = request.form.get("beschreibung_ar")
-            beschreibung_de = beschreibung_ar
-            betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
+                datum = request.form.get("datum")
+                kategorie_ar = request.form.get("kategorie")
+                kategorie_de = CATEGORIES.get(kategorie_ar, {}).get("de")
+                beschreibung_ar = request.form.get("beschreibung_ar")
+                beschreibung_de = beschreibung_ar
+                betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
             
             if DATABASE_URL:
                 ohne_beleg = True if request.form.get("ohne_beleg") else False
