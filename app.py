@@ -14,6 +14,7 @@ from flask import (
     url_for, session, flash, send_from_directory
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 import psycopg2
 import psycopg2.extras
@@ -37,6 +38,8 @@ CATEGORIES = {
 }
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
+
+ensure_schema()
 
 # Uploads
 app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "uploads")
