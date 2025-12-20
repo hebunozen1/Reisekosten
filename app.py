@@ -539,7 +539,12 @@ def dashboard():
             kategorie_ar = request.form.get("kategorie")
             beschreibung_ar = request.form.get("beschreibung_ar")
             betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
-            ohne_beleg = 1 if request.form.get("ohne_beleg") else 0
+            
+            if DATABASE_URL:
+                ohne_beleg = True if request.form.get("ohne_beleg") else False
+            else:
+                 ohne_beleg = 1 if request.form.get("ohne_beleg") else 0
+
 
             beleg_filename = None
             beleg_file = request.files.get("beleg")
