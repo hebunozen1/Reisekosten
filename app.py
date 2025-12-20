@@ -307,14 +307,32 @@ def reset(token):
     conn.close()
     return render_template("reset.html")
 
-@app.route("/dashboard", methods=["GET"])
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
     role = session.get("role", "reisefuehrer")
 
-    # Buchhaltung sieht die Buchhaltungsmaske
+    # ===== POST: Formulare verarbeiten =====
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "set_start":
+            flash("Startguthaben gespeichert", "ok")
+
+        elif action == "reset_start":
+            flash("Startguthaben zurückgesetzt", "ok")
+
+        elif action == "add_kosten":
+            flash("Kosten gespeichert", "ok")
+
+        elif action == "delete_kosten":
+            flash("Kosten gelöscht", "ok")
+
+        return redirect(url_for("dashboard"))
+
+    # ===== GET: Seiten anzeigen =====
     if role == "buchhaltung":
         return render_template(
             "admin.html",
@@ -322,7 +340,6 @@ def dashboard():
             kosten=[]
         )
 
-    # Reiseführer-Dashboard: erstmal stabile Defaults (später echte DB-Werte)
     return render_template(
         "dashboard.html",
         ordered=list(CATEGORIES.items()),
@@ -333,6 +350,7 @@ def dashboard():
         rows=[],
         wechselkurs_beleg=None
     )
+
 @app.route("/logout")
 def logout():
     session.clear()
