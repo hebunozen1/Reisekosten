@@ -218,7 +218,7 @@ def login():
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            " id, username, email, password_hash, role FROM users WHERE email = %s"
+            "SELECT id, username, email, password_hash, role FROM users WHERE email = %s"
             if DATABASE_URL else
             "SELECT id, username, email, password_hash, role FROM users WHERE email = ?",
             (email,)
@@ -596,7 +596,7 @@ def dashboard():
     cur = conn.cursor()
 
     cur.execute(
-        " betrag_sar, wechselkurs_beleg FROM startguthaben WHERE user_id=%s" if DATABASE_URL else
+        "SELECT betrag_sar, wechselkurs_beleg FROM startguthaben WHERE user_id=%s" if DATABASE_URL else
         "SELECT betrag_sar, wechselkurs_beleg FROM startguthaben WHERE user_id=?",
         (uid,)
     )
