@@ -451,7 +451,7 @@ def dashboard():
                 if genehmigt_val == -1 and alt_status != -1:
                     if DATABASE_URL:
                         cur.execute(
-                            "UPDATE users SET startguthaben = startguthaben + %s WHERE id=%s",
+                            "UPDATE startguthaben SET betrag_sar = betrag_sar + %s WHERE user_id=%s",
                             (betrag, reisefuehrer_id)
                         )
                     else:
@@ -531,7 +531,7 @@ def dashboard():
                 if alt_status == -1 and genehmigt_val == 1:
                         if DATABASE_URL:
                             cur.execute(
-                                "UPDATE users SET startguthaben = startguthaben - %s WHERE id=%s",
+                                "UPDATE startguthaben SET betrag_sar = betrag_sar - %s WHERE user_id=%s",
                                 (betrag, reisefuehrer_id)
                             )
                         else:
