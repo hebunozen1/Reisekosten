@@ -618,21 +618,28 @@ def dashboard():
     saldo = start - total
 
     cur.execute(
-        "SELECT id, datum, kategorie, beschreibung_ar, betrag_sar, beleg, genehmigt FROM kosten WHERE user_id=%s ORDER BY id DESC" if DATABASE_URL else
-        "SELECT id, datum, kategorie, beschreibung_ar, betrag_sar, beleg, genehmigt FROM kosten WHERE user_id=? ORDER BY id DESC",
+        "SELECT id, datum, kategorie_ar, beschreibung_ar, betrag_sar, beleg, genehmigt FROM kosten WHERE user_id=%s ORDER BY id DESC" if DATABASE_URL else
+        "SELECT id, datum, kategorie_ar, beschreibung_ar, betrag_sar, beleg, genehmigt FROM kosten WHERE user_id=? ORDER BY id DESC",
         (uid,)
     )
+
     rows_db = cur.fetchall() or []
     rows = []
+
     for r in rows_db:
         d = dict(r) if hasattr(r, "keys") else {
-            "id": r[0], "datum": r[1], "kategorie": r[2], "beschreibung_ar": r[3], "betrag_sar": r[4], "beleg": r[5], "genehmigt": r[6]
+            "id": r[0],
+            "datum": r[1],
+            "kategorie_ar": r[2],    
+            "beschreibung_ar": r[3],
+            "betrag_sar": r[4],
+            "beleg": r[5],
+            "genehmigt": r[6]
         }
-        cat = CATEGORIES.get(d.get("kategorie") or "", {})
-        d["kategorie_ar"] = cat.get("ar", d.get("kategorie") or "")
         rows.append(d)
 
     conn.close()
+
     return render_template(
         "dashboard.html",
         ordered=list(CATEGORIES.items()),
