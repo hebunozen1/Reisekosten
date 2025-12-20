@@ -438,7 +438,7 @@ def dashboard():
                 cur = conn.cursor()
                 if DATABASE_URL:
                     cur.execute("DELETE FROM startguthaben WHERE user_id=%s", (uid,))
-                else:
+            else:
                 cur.execute("DELETE FROM startguthaben WHERE user_id=?", (uid,))
                 conn.commit()
                 conn.close()
