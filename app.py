@@ -39,7 +39,6 @@ CATEGORIES = {
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
-ensure_schema()
 
 # Uploads
 app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "uploads")
@@ -153,6 +152,8 @@ def ensure_schema():
 
     conn.commit()
     conn.close()
+
+ensure_schema()
 
 # =====================
 # SMTP – STRATO
