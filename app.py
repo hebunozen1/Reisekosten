@@ -127,7 +127,7 @@ def ensure_schema():
             beleg TEXT,
             ohne_beleg INTEGER NOT NULL DEFAULT 0,
             genehmigt INTEGER NOT NULL DEFAULT 0,
-            genehmigt_von TEXT
+            genehmigt_von TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         )
         """)
