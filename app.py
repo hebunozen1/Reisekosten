@@ -537,6 +537,7 @@ def dashboard():
         if action == "add_kosten":
             datum = request.form.get("datum")
             kategorie_ar = request.form.get("kategorie")
+            kategorie_de = CATEGORIES.get(kategorie_ar, {}).get("de")
             beschreibung_ar = request.form.get("beschreibung_ar")
             betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
             
@@ -561,10 +562,10 @@ def dashboard():
             if DATABASE_URL:
                 cur.execute(
                     """
-                    INSERT INTO kosten (user_id, datum, kategorie_ar, beschreibung_ar, betrag_sar, beleg, ohne_beleg, genehmigt, created_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,0,NOW())
+                    INSERT INTO kosten (user_id, datum, kategorie_ar, kategorie_de, beschreibung_ar, betrag_sar, beleg, ohne_beleg, genehmigt, created_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,0,NOW())
                     """,
-                    (uid, datum, kategorie_ar, beschreibung_ar, betrag, beleg_filename, ohne_beleg)
+                    (uid, datum, kategorie_ar, kategorie_de, beschreibung_ar, betrag, beleg_filename, ohne_beleg)
                 )
             else:
                 cur.execute(
