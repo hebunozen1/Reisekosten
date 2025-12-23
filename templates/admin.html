@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Buchhaltung</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;margin:0;padding:18px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-top:12px}
+    h2{margin:0}
+    a{text-decoration:none}
+    table{width:100%;border-collapse:collapse;min-width:1200px}
+    th,td{border-bottom:1px solid #eee;padding:10px;vertical-align:top}
+    th{background:#fafafa;text-align:left;position:sticky;top:0}
+    .wrap{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:auto}
+    button,.btn{padding:8px 10px;border:1px solid #ddd;background:#fff;border-radius:10px;cursor:pointer}
+    .badge{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}
+    .ok{background:#e6ffed}
+    .no{background:#fff5f5}
+    .wait{background:#fffbe6}
+    .msg{padding:10px;border-radius:10px;margin:10px 0}
+    .msg.ok{background:#e6ffed}
+    .msg.err{background:#fff5f5}
+    .muted{color:#666;font-size:13px}
+  </style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h2>Buchhaltung</h2>
+    <div class="muted">Angemeldet als: {{ session.get('username') }}</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <a class="btn" href="/export_excel">Excel Export</a>
+    <a class="btn" href="/logout">Logout</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat,msg in messages %}
+      <div class="msg {{ 'ok' if cat=='ok' else 'err' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card">
+  <h3 style="margin:0 0 10px">Übersicht pro Reiseführer</h3>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reiseführer</th>
+          <th>Startguthaben (SAR)</th>
+          <th>Summe Ausgaben (SAR)</th>
+          <th>Saldo (SAR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users_summary %}
+          <tr>
+            <td>{{ u["username"] }}</td>
+            <td>{{ '%.2f'|format(u["start"]) }}</td>
+            <td>{{ '%.2f'|format(u["total"]) }}</td>
+            <td>{{ '%.2f'|format(u["saldo"]) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 10px">Alle Ausgaben</h3>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Reiseführer</th>
+          <th>Datum</th>
+          <th>Kategorie (AR)</th>
+          <th>Beschreibung (AR)</th>
+          <th>Betrag (SAR)</th>
+          <th>Beleg</th>
+          <th>Status</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for k in kosten %}
+          <tr>
+            <td>{{ k["id"] }}</td>
+            <td>{{ k["username"] }}</td>
+            <td>{{ k["datum"] }}</td>
+            <td>{{ k["kategorie_ar"] }}</td>
+            <td>{{ k["beschreibung_ar"] }}</td>
+            <td>{{ '%.2f'|format(k["betrag_sar"]) }}</td>
+            <td>
+              {% if k["beleg"] %}
+                <a href="/uploads/{{ k['beleg'] }}" target="_blank">📎</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if k["genehmigt"] == 1 %}
+                <span class="badge ok">Genehmigt</span>
+              {% elif k["genehmigt"] == -1 %}
+                <span class="badge no">Abgelehnt</span>
+              {% else %}
+                <span class="badge wait">Offen</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if k["genehmigt"] == 0 %}
+                <form method="post" action="/dashboard" style="display:inline;margin:0">
+                  <input type="hidden" name="action" value="approve">
+                  <input type="hidden" name="kid" value="{{ k['id'] }}">
+                  <button class="btn" type="submit">Genehmigen</button>
+                </form>
+                <form method="post" action="/dashboard" style="display:inline;margin:0">
+                  <input type="hidden" name="action" value="deny">
+                  <input type="hidden" name="kid" value="{{ k['id'] }}">
+                  <button class="btn danger" type="submit">Ablehnen</button>
+                </form>
+                <form method="post" action="/dashboard" style="display:inline;margin:0" onsubmit="return confirm('Diesen Eintrag nur aus der Buchhaltung entfernen? (Reiseführer behält ihn)');">
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="kid" value="{{ k['id'] }}">
+                  <button class="btn danger" type="submit">Löschen</button>
+                </form>
+              {% else %}
+                {{ k["genehmigt_von"] or "" }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>
