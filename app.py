@@ -244,7 +244,6 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # role only for UI selection / highlighting
     selected_role = request.args.get("role", "reisefuehrer")
 
     if request.method == "POST":
@@ -258,25 +257,24 @@ def login():
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email) = LOWER(%s)"
+            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email)=LOWER(%s)"
             if DATABASE_URL else
-            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email) = LOWER(?)",
+            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email)=LOWER(?)",
             (email,)
         )
         user = cur.fetchone()
-        if not user or user.get("reset_token_expires") is None or user.get("reset_token_expires") < datetime.utcnow():
-            flash("Der Reset-Link ist abgelaufen.", "error")
-            return redirect(url_for("login"))
         conn.close()
 
-        if user:
-            # robust for sqlite tuple/Row and postgres dict
-            pw_hash = user["password_hash"] if hasattr(user, "keys") else user[3]
-            if pw_hash and check_password_hash(pw_hash, password):
-                session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
-                session["role"] = user["role"] if hasattr(user, "keys") else user[4]
-                session["username"] = user["username"] if hasattr(user, "keys") else user[1]
-                return redirect(url_for("dashboard"))
+        if not user:
+            flash("Login fehlgeschlagen")
+            return redirect(url_for("login", role=selected_role))
+
+        pw_hash = user["password_hash"] if hasattr(user, "keys") else user[3]
+        if pw_hash and check_password_hash(pw_hash, password):
+            session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
+            session["role"] = user["role"] if hasattr(user, "keys") else user[4]
+            session["username"] = user["username"] if hasattr(user, "keys") else user[1]
+            return redirect(url_for("dashboard"))
 
         flash("Login fehlgeschlagen")
         return redirect(url_for("login", role=selected_role))
@@ -413,13 +411,10 @@ def reset(token):
         (token,)
     )
     user = cur.fetchone()
-        if not user or user.get("reset_token_expires") is None or user.get("reset_token_expires") < datetime.utcnow():
-            flash("Der Reset-Link ist abgelaufen.", "error")
-            return redirect(url_for("login"))
 
-    if not user:
+    if not user or user.get("reset_token_expires") is None or user.get("reset_token_expires") < datetime.utcnow():
         conn.close()
-        flash("Ungültiger oder abgelaufener Link")
+        flash("Der Reset-Link ist abgelaufen.", "error")
         return redirect(url_for("login"))
 
     if request.method == "POST":
@@ -440,6 +435,7 @@ def reset(token):
 
     conn.close()
     return render_template("reset.html")
+
 
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
