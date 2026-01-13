@@ -1,0 +1,26 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # täglich um 02:00
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run database backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          pg_dump "$DATABASE_URL" > backup.sql
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: reisekosten-backup
+          path: backup.sql
