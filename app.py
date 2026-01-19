@@ -1072,3 +1072,51 @@ def buchhalter_delete_guide(user_id):
 
     flash("Reiseführer und alle Ausgaben wurden gelöscht. Benutzername/E-Mail sind wieder frei.", "success")
     return redirect(url_for("dashboard"))
+
+@app.route("/admin/restore-belege", methods=["POST"])
+def restore_belege():
+    # 🔐 Nur Buchhaltung
+    if session.get("role") != "buchhaltung":
+        flash("Keine Berechtigung.", "error")
+        return redirect(url_for("dashboard"))
+
+    file = request.files.get("backup_zip")
+    if not file or not file.filename.lower().endswith(".zip"):
+        flash("Bitte eine gültige ZIP-Datei auswählen.", "err")
+        return redirect(url_for("dashboard"))
+
+    upload_dir = app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_dir, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(file) as zipf:
+            restored = 0
+
+            for member in zipf.infolist():
+                name = member.filename
+
+                # 🔒 Sicherheitschecks
+                if not name.startswith("uploads/"):
+                    continue
+                if ".." in name or name.endswith("/"):
+                    continue
+
+                filename = os.path.basename(name)
+                if not filename:
+                    continue
+
+                target_path = os.path.join(upload_dir, filename)
+
+                # Datei schreiben (überschreibt ggf. alte Datei gleichen Namens)
+                with zipf.open(member) as source, open(target_path, "wb") as target:
+                    target.write(source.read())
+
+                restored += 1
+
+        flash(f"✅ {restored} Beleg-Dateien erfolgreich wiederhergestellt.", "ok")
+
+    except Exception as e:
+        flash(f"Fehler beim Wiederherstellen: {e}", "err")
+
+    return redirect(url_for("dashboard"))
+
