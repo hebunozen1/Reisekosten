@@ -439,11 +439,22 @@ def reset(token):
 
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
+    # absoluter, sicherer Pfad
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    upload_dir = os.path.join(base_dir, "uploads")
+
+    file_path = os.path.join(upload_dir, filename)
+
+    # Falls Datei nicht existiert → echtes 404
+    if not os.path.isfile(file_path):
+        return "Beleg nicht gefunden", 404
+
     return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
+        upload_dir,
         filename,
         as_attachment=False
     )
+
 
 
 def _parse_decimal(val: str) -> float:
