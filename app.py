@@ -1120,5 +1120,3 @@ def restore_belege():
 
     return redirect(url_for("dashboard"))
 
-
-
