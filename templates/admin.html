@@ -32,7 +32,15 @@
     <div class="muted">Angemeldet als: {{ session.get('username') }}</div>
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <a class="btn" href="/export_excel">Excel Export</a>
+    <a class="btn" href="/export_excel">📊 Excel Export</a>
+
+    <a class="btn"
+       href="/admin/export-backup"
+       onclick="return confirm('Komplettes Backup herunterladen?\n\nEmpfohlen vor jedem Deploy!');"
+       style="background:#ff9800;border-color:#ff9800;color:#000;font-weight:700">
+       🗂️ Backup (DB + Belege)
+    </a>
+
     <a class="btn" href="/logout">Logout</a>
   </div>
 </div>
