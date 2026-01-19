@@ -87,7 +87,7 @@ def ensure_schema():
             password_hash TEXT,
             role TEXT,
             reset_token TEXT,
-            reset_expires TIMESTAMP
+            reset_token_expires TIMESTAMP
         )
         """)
     else:
@@ -99,7 +99,7 @@ def ensure_schema():
             password_hash TEXT,
             role TEXT,
             reset_token TEXT,
-            reset_expires TEXT
+            reset_token_expires TEXT
         )
         """)
 
@@ -244,7 +244,6 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # role only for UI selection / highlighting
     selected_role = request.args.get("role", "reisefuehrer")
 
     if request.method == "POST":
@@ -258,22 +257,24 @@ def login():
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email) = LOWER(%s)"
+            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email)=LOWER(%s)"
             if DATABASE_URL else
-            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email) = LOWER(?)",
+            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(email)=LOWER(?)",
             (email,)
         )
         user = cur.fetchone()
         conn.close()
 
-        if user:
-            # robust for sqlite tuple/Row and postgres dict
-            pw_hash = user["password_hash"] if hasattr(user, "keys") else user[3]
-            if pw_hash and check_password_hash(pw_hash, password):
-                session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
-                session["role"] = user["role"] if hasattr(user, "keys") else user[4]
-                session["username"] = user["username"] if hasattr(user, "keys") else user[1]
-                return redirect(url_for("dashboard"))
+        if not user:
+            flash("Login fehlgeschlagen")
+            return redirect(url_for("login", role=selected_role))
+
+        pw_hash = user["password_hash"] if hasattr(user, "keys") else user[3]
+        if pw_hash and check_password_hash(pw_hash, password):
+            session["user_id"] = user["id"] if hasattr(user, "keys") else user[0]
+            session["role"] = user["role"] if hasattr(user, "keys") else user[4]
+            session["username"] = user["username"] if hasattr(user, "keys") else user[1]
+            return redirect(url_for("dashboard"))
 
         flash("Login fehlgeschlagen")
         return redirect(url_for("login", role=selected_role))
@@ -315,9 +316,9 @@ def register():
                 cur = conn.cursor()
                 try:
                     cur.execute(
-                        "UPDATE users SET username=%s, password_hash=%s, role=%s, reset_token=NULL, reset_expires=NULL WHERE id=%s"
+                        "UPDATE users SET username=%s, password_hash=%s, role=%s, reset_token=NULL, reset_token_expires=NULL WHERE id=%s"
                         if DATABASE_URL else
-                        "UPDATE users SET username=?, password_hash=?, role=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
+                        "UPDATE users SET username=?, password_hash=?, role=?, reset_token=NULL, reset_token_expires=NULL WHERE id=?",
                         (username, pw_hash, role, existing_id)
                     )
                     conn.commit()
@@ -362,6 +363,9 @@ def forgot():
             "SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,)
         )
         user = cur.fetchone()
+        if not user or user.get("reset_token_expires") is None or user.get("reset_token_expires") < datetime.utcnow():
+            flash("Der Reset-Link ist abgelaufen.", "error")
+            return redirect(url_for("login"))
 
         print("USER AUS DB:", user)
 
@@ -372,9 +376,9 @@ def forgot():
             expires = datetime.utcnow() + timedelta(minutes=30)
 
             cur.execute(
-                "UPDATE users SET reset_token=%s, reset_expires=%s WHERE id=%s"
+                "UPDATE users SET reset_token=%s, reset_token_expires=%s WHERE id=%s"
                 if DATABASE_URL else
-                "UPDATE users SET reset_token=?, reset_expires=? WHERE id=?",
+                "UPDATE users SET reset_token=?, reset_token_expires=? WHERE id=?",
                 (token, expires, user["id"])
             )
             conn.commit()
@@ -408,9 +412,9 @@ def reset(token):
     )
     user = cur.fetchone()
 
-    if not user:
+    if not user or user.get("reset_token_expires") is None or user.get("reset_token_expires") < datetime.utcnow():
         conn.close()
-        flash("Ungültiger oder abgelaufener Link")
+        flash("Der Reset-Link ist abgelaufen.", "error")
         return redirect(url_for("login"))
 
     if request.method == "POST":
@@ -418,9 +422,9 @@ def reset(token):
         pw_hash = generate_password_hash(password)
 
         cur.execute(
-            "UPDATE users SET password_hash=%s, reset_token=NULL, reset_expires=NULL WHERE id=%s"
+            "UPDATE users SET password_hash=%s, reset_token=NULL, reset_token_expires=NULL WHERE id=%s"
             if DATABASE_URL else
-            "UPDATE users SET password_hash=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
+            "UPDATE users SET password_hash=?, reset_token=NULL, reset_token_expires=NULL WHERE id=?",
             (pw_hash, user["id"])
         )
         conn.commit()
@@ -432,9 +436,15 @@ def reset(token):
     conn.close()
     return render_template("reset.html")
 
+
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        filename,
+        as_attachment=False
+    )
+
 
 def _parse_decimal(val: str) -> float:
     if val is None:
@@ -686,7 +696,7 @@ def dashboard():
             r1 = cur.fetchone()
             total = float(r1.get("total", 0) if hasattr(r1, "keys") else (r1[0] if r1 else 0.0)) if r1 else 0.0
 
-            users_summary.append({"username": u_name, "start": start, "total": total, "saldo": start - total})
+            users_summary.append({"id": u_id, "username": u_name, "start": start, "total": total, "saldo": start - total})
 
         # all costs
         cur.execute(
@@ -972,3 +982,40 @@ def delete_account():
     session.clear()
     flash("Dein Account wurde gelöscht. Du kannst dich neu registrieren.")
     return redirect(url_for("register"))
+
+
+@app.route("/buchhaltung/reisefuehrer_loeschen/<int:user_id>", methods=["POST"])
+def buchhalter_delete_guide(user_id):
+    # Nur Buchhaltung darf löschen
+    if session.get("role") != "buchhaltung":
+        flash("Keine Berechtigung.", "error")
+        return redirect(url_for("dashboard"))
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        # Alle Ausgaben/Einträge dieses Reiseführers löschen
+        cur.execute(
+            "DELETE FROM kosten WHERE user_id = %s" if DATABASE_URL else
+            "DELETE FROM kosten WHERE user_id = ?",
+            (user_id,)
+        )
+        # Startguthaben ebenfalls löschen (falls vorhanden)
+        cur.execute(
+            "DELETE FROM startguthaben WHERE user_id = %s" if DATABASE_URL else
+            "DELETE FROM startguthaben WHERE user_id = ?",
+            (user_id,)
+        )
+        # User löschen (nur Reiseführer)
+        cur.execute(
+            "DELETE FROM users WHERE id = %s AND role = %s" if DATABASE_URL else
+            "DELETE FROM users WHERE id = ? AND role = ?",
+            (user_id, "reisefuehrer")
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    flash("Reiseführer und alle Ausgaben wurden gelöscht. Benutzername/E-Mail sind wieder frei.", "success")
+    return redirect(url_for("dashboard"))
+
