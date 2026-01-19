@@ -439,7 +439,12 @@ def reset(token):
 
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        filename,
+        as_attachment=False
+    )
+
 
 def _parse_decimal(val: str) -> float:
     if val is None:
