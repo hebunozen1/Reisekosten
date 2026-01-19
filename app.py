@@ -5,13 +5,15 @@ import hashlib
 import smtplib
 import io
 import csv
+import zipfile
+import tempfile
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, flash, send_from_directory
+    url_for, session, flash, send_from_directory, send_file
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -190,7 +192,6 @@ def _ensure_schema_once():
         ensure_schema()
         _SCHEMA_READY = True
     except Exception as e:
-        # Don't hard-crash the whole process on boot; surface in logs
         print("DB schema init failed:", repr(e), flush=True)
         raise
 
@@ -280,6 +281,7 @@ def login():
         return redirect(url_for("login", role=selected_role))
 
     return render_template("login.html", role=selected_role)
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -307,8 +309,6 @@ def register():
         conn.close()
 
         if exists:
-            # If the account exists but has no usable password (legacy/partial row),
-            # we "complete" the account by setting a fresh password_hash.
             existing_id = exists["id"] if hasattr(exists, "keys") else exists[0]
             existing_hash = exists["password_hash"] if hasattr(exists, "keys") else exists[1]
             if not existing_hash:
@@ -466,7 +466,6 @@ def dashboard():
     role = session.get("role", "reisefuehrer")
     uid = session["user_id"]
 
-    
     # =========================
     # Buchhaltung
     # =========================
@@ -781,12 +780,11 @@ def dashboard():
             beschreibung_ar = request.form.get("beschreibung_ar")
             beschreibung_de = beschreibung_ar
             betrag = _parse_decimal(request.form.get("betrag_sar", "0"))
-            
+
             if DATABASE_URL:
                 ohne_beleg = True if request.form.get("ohne_beleg") else False
             else:
                 ohne_beleg = 1 if request.form.get("ohne_beleg") else 0
-
 
             beleg_filename = None
             beleg_file = request.files.get("beleg")
@@ -895,7 +893,7 @@ def dashboard():
         d = dict(r) if hasattr(r, "keys") else {
             "id": r[0],
             "datum": r[1],
-            "kategorie_ar": r[2],    
+            "kategorie_ar": r[2],
             "beschreibung_ar": r[3],
             "betrag_sar": r[4],
             "beleg": r[5],
@@ -950,13 +948,69 @@ def export_excel():
         "Content-Disposition": "attachment; filename=reisekosten_export.csv"
     })
 
-@app.route("/logout")
+# =========================
+# ✅ NEU: Komplettes Backup (DB + uploads) als ZIP
+# =========================
+@app.route("/admin/export-backup")
+def export_backup():
+    if session.get("role") != "buchhaltung":
+        flash("Keine Berechtigung.", "error")
+        return redirect(url_for("dashboard"))
 
+    ts = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+    zip_name = f"reisekosten_backup_{ts}.zip"
+    zip_path = os.path.join(tempfile.gettempdir(), zip_name)
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        # 1) DB sichern
+        if DATABASE_URL:
+            # Bei Postgres ohne Shell: CSV-Exports der Tabellen
+            conn = get_db()
+            cur = conn.cursor()
+
+            for table in ("users", "kosten", "startguthaben"):
+                try:
+                    cur.execute(f"SELECT * FROM {table}")
+                    rows = cur.fetchall() or []
+                except Exception:
+                    rows = []
+
+                csv_path = os.path.join(tempfile.gettempdir(), f"{table}_{ts}.csv")
+                with open(csv_path, "w", encoding="utf-8", newline="") as f:
+                    writer = csv.writer(f, delimiter=";")
+                    if rows and hasattr(rows[0], "keys"):
+                        writer.writerow(rows[0].keys())
+                        for r in rows:
+                            writer.writerow(list(r.values()))
+                    else:
+                        # falls leer oder anderer Cursor-Typ
+                        writer.writerow(["info"])
+                        writer.writerow([f"Keine Daten oder kein Zugriff auf Tabelle {table}."])
+
+                zipf.write(csv_path, arcname=f"database/{table}.csv")
+
+            conn.close()
+        else:
+            # SQLite: komplette Datei
+            if os.path.exists("reisekosten.db"):
+                zipf.write("reisekosten.db", arcname="database/reisekosten.db")
+
+        # 2) Uploads sichern
+        upload_dir = app.config["UPLOAD_FOLDER"]
+        if os.path.exists(upload_dir):
+            for root, _, files in os.walk(upload_dir):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, upload_dir)
+                    zipf.write(full_path, arcname=f"uploads/{rel_path}")
+
+    return send_file(zip_path, as_attachment=True)
+
+
+@app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
-
 
 
 @app.route("/delete_account", methods=["POST"])
@@ -1018,4 +1072,3 @@ def buchhalter_delete_guide(user_id):
 
     flash("Reiseführer und alle Ausgaben wurden gelöscht. Benutzername/E-Mail sind wieder frei.", "success")
     return redirect(url_for("dashboard"))
-
