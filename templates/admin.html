@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Buchhaltung</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;margin:0;padding:18px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-top:12px}
+    h2,h3{margin:0}
+    a{text-decoration:none}
+    table{width:100%;border-collapse:collapse;min-width:1000px}
+    th,td{border-bottom:1px solid #eee;padding:10px;vertical-align:top}
+    th{background:#fafafa;text-align:left;position:sticky;top:0}
+    .wrap{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:auto}
+    button,.btn{padding:8px 10px;border:1px solid #ddd;background:#fff;border-radius:10px;cursor:pointer;color:#111}
+    .btn.primary{background:#0c7be5;border-color:#0c7be5;color:#fff}
+    .btn.warn{background:#ff9800;border-color:#ff9800;color:#111;font-weight:700}
+    .danger{background:#ff4d4f !important;border-color:#ff4d4f !important;color:#fff !important}
+    .badge{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}
+    .ok{background:#e6ffed}.no{background:#fff5f5}.wait{background:#fffbe6}
+    .msg{padding:10px;border-radius:10px;margin:10px 0}
+    .msg.ok{background:#e6ffed}.msg.err{background:#fff5f5}
+    .muted{color:#666;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+    @media (max-width:1100px){.grid{grid-template-columns:1fr}}
+    input,select{padding:10px;border:1px solid #ddd;border-radius:10px}
+    .orig{margin-top:4px;color:#777;font-size:12px;direction:rtl;text-align:right}
+  </style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h2>Buchhaltung</h2>
+    <div class="muted">Angemeldet als: {{ session.get('username') }}</div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <a class="btn primary" href="{{ url_for('export_excel', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}">CSV-Report (Filter)</a>
+    <form method="post" action="{{ url_for('dashboard', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}" style="display:inline;margin:0">
+      <input type="hidden" name="action" value="translate_descriptions">
+      <button class="btn" type="submit" title="Übersetzt fehlende arabische Beschreibungen im aktuellen Filter in kleinen Schritten.">Beschreibungen übersetzen{% if missing_translation_count %} ({{ missing_translation_count }}){% endif %}</button>
+    </form>
+    <a class="btn warn" href="/admin/export-backup" onclick="return confirm('Komplettes Backup herunterladen?');">🗂️ Backup (DB + Belege)</a>
+    <form action="/admin/restore-belege" method="post" enctype="multipart/form-data" style="display:inline" onsubmit="return confirm('Beleg-Dateien aus ZIP wiederherstellen?');">
+      <input type="file" name="backup_zip" accept=".zip" required style="font-size:12px">
+      <button class="btn primary" type="submit">🔁 Belege wiederherstellen</button>
+    </form>
+    <a class="btn" href="/logout">Logout</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat,msg in messages %}
+      <div class="msg {{ 'ok' if cat=='ok' else 'err' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
+{% if can_manage_requests %}
+<div class="card">
+  <div class="top">
+    <div>
+      <h3>Registrierungsanfragen</h3>
+      <div class="muted">Nur {{ approver_email }} kann neue Buchhalter- oder Reiseführer-Konten freigeben.</div>
+    </div>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Benutzername</th>
+          <th>E-Mail</th>
+          <th>Gewünschte Rolle</th>
+          <th>Status</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in pending_registrations %}
+          <tr>
+            <td>{{ req['id'] }}</td>
+            <td>{{ req['username'] }}</td>
+            <td>{{ req['email'] }}</td>
+            <td>{{ 'Buchhaltung' if req['role'] == 'buchhaltung' else 'Reiseführer' }}</td>
+            <td><span class="badge wait">Wartet auf Freigabe</span></td>
+            <td>
+              <form method="post" action="{{ url_for('dashboard', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}" style="display:inline;margin:0">
+                <input type="hidden" name="action" value="approve_registration">
+                <input type="hidden" name="pending_user_id" value="{{ req['id'] }}">
+                <button class="btn primary" type="submit">Freigeben</button>
+              </form>
+              <form method="post" action="{{ url_for('dashboard', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}" style="display:inline;margin:0" onsubmit="return confirm('Anfrage wirklich ablehnen?');">
+                <input type="hidden" name="action" value="reject_registration">
+                <input type="hidden" name="pending_user_id" value="{{ req['id'] }}">
+                <button class="btn danger" type="submit">Ablehnen</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="muted">Aktuell gibt es keine offenen Registrierungsanfragen.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="top">
+    <div>
+      <h3>Filter für Monat / Reise / Reiseführer</h3>
+      <div class="muted">Damit lassen sich Ausgaben und Vorschüsse getrennt auswerten und als kompletter Report exportieren.</div>
+      {% if missing_translation_count %}
+        <div class="muted" style="margin-top:4px">{{ missing_translation_count }} Beschreibung(en) im aktuellen Filter haben noch keine deutsche Übersetzung. Nutze oben „Beschreibungen übersetzen“.</div>
+      {% endif %}
+    </div>
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div>
+        <div class="muted">Reiseführer</div>
+        <select name="user_id">
+          <option value="">Alle</option>
+          {% for user in users %}
+            <option value="{{ user['id'] }}" {% if selected_user_id == (user['id']|string) %}selected{% endif %}>{{ user['username'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <div class="muted">Monat</div>
+        <input type="month" name="monat" value="{{ selected_month }}">
+      </div>
+      <div>
+        <div class="muted">Reise</div>
+        <select name="reise">
+          <option value="">Alle</option>
+          {% for trip in trip_options %}
+            <option value="{{ trip }}" {% if trip == selected_trip %}selected{% endif %}>{{ trip }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn primary" type="submit">Anwenden</button>
+      <a class="btn" href="{{ url_for('dashboard') }}">Zurücksetzen</a>
+    </form>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="muted">Anfangssaldo</div><div style="font-size:22px;font-weight:800">{{ '%.2f'|format(scope_summary.opening) }} SAR</div></div>
+  <div class="card"><div class="muted">Vorschüsse</div><div style="font-size:22px;font-weight:800">{{ '%.2f'|format(scope_summary.vorschuss_total) }} SAR</div></div>
+  <div class="card"><div class="muted">Ausgaben</div><div style="font-size:22px;font-weight:800">{{ '%.2f'|format(scope_summary.kosten_total) }} SAR</div></div>
+  <div class="card"><div class="muted">Restguthaben</div><div style="font-size:22px;font-weight:800">{{ '%.2f'|format(scope_summary.closing) }} SAR</div></div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 10px">Übersicht pro Reiseführer</h3>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reiseführer</th>
+          <th>Anfangsbestand (SAR)</th>
+          <th>Vorschüsse gesamt (SAR)</th>
+          <th>Ausgaben gesamt (SAR)</th>
+          <th>Saldo gesamt (SAR)</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users_summary %}
+          <tr>
+            <td>{{ u['username'] }}</td>
+            <td>{{ '%.2f'|format(u['start']) }}</td>
+            <td>{{ '%.2f'|format(u['vorschuesse']) }}</td>
+            <td>{{ '%.2f'|format(u['total']) }}</td>
+            <td>{{ '%.2f'|format(u['saldo']) }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('buchhalter_delete_guide', user_id=u['id']) }}" style="display:inline;margin:0" onsubmit="return confirm('Sind Sie sicher, dass der Account gelöscht werden soll?');">
+                <button class="btn danger" type="submit">Reiseführer löschen</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 10px">Vorschüsse im aktuellen Filter</h3>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Reiseführer</th>
+          <th>Datum</th>
+          <th>Reise</th>
+          <th>Beschreibung</th>
+          <th>Betrag (SAR)</th>
+          <th>Beleg</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in vorschuesse %}
+          <tr>
+            <td>{{ v['id'] }}</td>
+            <td>{{ v['username'] }}</td>
+            <td>{{ v['datum'] }}</td>
+            <td>{{ v['reise_name'] or '—' }}</td>
+            <td>{{ v['beschreibung'] or '—' }}</td>
+            <td>{{ '%.2f'|format(v['betrag_sar']) }}</td>
+            <td>{% if v['beleg'] %}<a href="/uploads/{{ v['beleg'] }}" target="_blank">📎</a>{% else %}—{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="muted">Keine Vorschüsse im aktuellen Filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 10px">Ausgaben im aktuellen Filter</h3>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Reiseführer</th>
+          <th>Datum</th>
+          <th>Reise</th>
+          <th>Kategorie</th>
+          <th>Beschreibung (Deutsch)</th>
+          <th>Betrag (SAR)</th>
+          <th>Beleg</th>
+          <th>Status</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for k in kosten %}
+          <tr>
+            <td>{{ k['id'] }}</td>
+            <td>{{ k['username'] }}</td>
+            <td>{{ k['datum'] }}</td>
+            <td>{{ k['reise_name'] or '—' }}</td>
+            <td>{{ k['kategorie_de'] or k['kategorie_ar'] }}</td>
+            <td>
+              <div>{{ k['beschreibung_de'] or k['beschreibung_ar'] or '—' }}</div>
+              {% if k['beschreibung_ar'] and k['beschreibung_de'] and k['beschreibung_de'] != k['beschreibung_ar'] %}
+                <div class="orig">Original: {{ k['beschreibung_ar'] }}</div>
+              {% endif %}
+            </td>
+            <td>{{ '%.2f'|format(k['betrag_sar']) }}</td>
+            <td>{% if k['beleg'] %}<a href="/uploads/{{ k['beleg'] }}" target="_blank">📎</a>{% else %}—{% endif %}</td>
+            <td>
+              {% if k['genehmigt'] == 1 %}<span class="badge ok">Genehmigt</span>
+              {% elif k['genehmigt'] == -1 %}<span class="badge no">Abgelehnt</span>
+              {% else %}<span class="badge wait">Offen</span>{% endif %}
+            </td>
+            <td>
+              {% if k['genehmigt'] == 0 %}
+                <form method="post" action="{{ url_for('dashboard', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}" style="display:inline;margin:0">
+                  <input type="hidden" name="action" value="approve">
+                  <input type="hidden" name="kid" value="{{ k['id'] }}">
+                  <button class="btn" type="submit">Genehmigen</button>
+                </form>
+                <form method="post" action="{{ url_for('dashboard', user_id=selected_user_id, monat=selected_month, reise=selected_trip) }}" style="display:inline;margin:0">
+                  <input type="hidden" name="action" value="deny">
+                  <input type="hidden" name="kid" value="{{ k['id'] }}">
+                  <button class="btn danger" type="submit">Ablehnen</button>
+                </form>
+              {% else %}
+                {{ k['genehmigt_von'] or '' }}
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="10" class="muted">Keine Ausgaben im aktuellen Filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>
